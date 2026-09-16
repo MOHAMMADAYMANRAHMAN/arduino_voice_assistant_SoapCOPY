@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32 & Arduino AI Voice Assistant</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Animated Ambient Background -->
+  <div class="app-background">
+    <div class="bg-glow blob-1"></div>
+    <div class="bg-glow blob-2"></div>
+    <div class="bg-glow blob-3"></div>
+  </div>
+
+  <div class="app-container">
+    <!-- Header Bar -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo-icon">✨</div>
+        <div>
+          <h1>ESP32 & Arduino Voice Assistant</h1>
+          <p class="subtitle">Control Microcontrollers via Wi-Fi REST API, mDNS (sara.local), or USB Web Serial</p>
+        </div>
+      </div>
+
+      <!-- Connection Mode & Status Bar -->
+      <div class="connection-bar">
+        <div class="control-mode-selector">
+          <label for="connectionMode">Mode:</label>
+          <select id="connectionMode" class="custom-select">
+            <option value="wifi" selected>📶 Wi-Fi (ESP32 / Hotspot)</option>
+            <option value="serial">🔌 USB Serial (Arduino / ESP32)</option>
+          </select>
+        </div>
+
+        <!-- Wi-Fi Controls -->
+        <div id="wifiControls" class="ip-selector">
+          <label for="espIp">ESP32 IP / Host:</label>
+          <input type="text" id="espIp" value="sara.local" placeholder="e.g. sara.local or 192.168.4.1">
+          <button id="connectBtn" class="btn btn-primary">
+            <span class="btn-icon">📡</span>
+            <span class="btn-text">Test Connection</span>
+          </button>
+        </div>
+
+        <!-- USB Serial Controls -->
+        <div id="serialControls" class="serial-btn-container" style="display: none;">
+          <select id="baudRateSelect" class="custom-select" style="width: 110px;">
+            <option value="115200" selected>115200 Baud</option>
+            <option value="9600">9600 Baud</option>
+          </select>
+          <button id="serialConnectBtn" class="btn btn-primary">
+            <span class="btn-icon">🔌</span>
+            <span class="btn-text">Connect USB</span>
+          </button>
+        </div>
+
+        <!-- Connection Status Badge -->
+        <div id="connectionStatusBadge" class="status-badge disconnected">
+          <span class="status-dot"></span>
+          <span id="statusBadgeText" class="status-text">Offline</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+      <button class="tab-btn active" data-tab="assistant">🎙️ AI Assistant</button>
+      <button class="tab-btn" data-tab="wifi-setup">⚙️ Wi-Fi Setup</button>
+      <button class="tab-btn" data-tab="trainer">🎓 Custom Trainer</button>
+      <button class="tab-btn" data-tab="guide">📖 Firmware & Setup Guide</button>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+      <!-- TAB 1: AI Assistant -->
+      <section id="tab-assistant" class="tab-content active">
+        <div class="dashboard-grid">
+          <!-- Voice Control Card -->
+          <div class="card glass-card voice-card">
+            <div class="card-header">
+              <h2>🎙️ Voice & Text Control</h2>
+              <div class="header-toggles">
+                <label class="toggle-switch" title="Keep microphone active continuously">
+                  <input type="checkbox" id="continuousListenToggle">
+                  <span class="slider"></span>
+                  <span class="toggle-label">Continuous Listen</span>
+                </label>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="wakeWordToggle">
+                  <span class="slider"></span>
+                  <span class="toggle-label">Wake Word ("Hey Sara")</span>
+                </label>
+                <label class="toggle-switch">
+                  <input type="checkbox" id="ttsToggle" checked>
+                  <span class="slider"></span>
+                  <span class="toggle-label">Voice Feedback</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="voice-center">
+              <div id="wakeBadge" class="wake-badge">
+                <span class="wake-icon">✨</span>
+                <span class="wake-text">Say "Hey Sara..." or click Microphone</span>
+              </div>
+
+              <!-- Animated Soundwave Visualizer -->
+              <div id="soundwave" class="soundwave-container">
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+                <div class="bar"></div>
+              </div>
+
+              <button id="micBtn" class="mic-button" title="Click to start/stop voice listening">
+                <div class="mic-icon">🎙️</div>
+              </button>
+              <div id="voiceStatus" class="voice-status">Tap microphone or speak a command...</div>
+            </div>
+
+            <!-- Text Command Fallback Input -->
+            <div class="text-command-box">
+              <label for="commandTextInput" class="text-command-label">💬 Type Command (Voice Fallback):</label>
+              <div class="input-group">
+                <input type="text" id="commandTextInput" placeholder="e.g., turn on LED, turn off, toggle light..." autocomplete="off">
+                <button id="sendTextCommandBtn" class="btn btn-primary">
+                  <span>Send</span> ➔
+                </button>
+              </div>
+            </div>
+
+            <div class="transcript-box">
+              <span class="transcript-label">Recognized Speech / Text:</span>
+              <p id="speechTranscript" class="transcript-text">"Waiting for voice or text command..."</p>
+            </div>
+
+            <!-- Voice Command History Log -->
+            <div class="history-box">
+              <div class="history-header">
+                <span class="history-label">📜 Command History Log</span>
+                <button id="clearHistoryBtn" class="btn-text-link">Clear Log</button>
+              </div>
+              <div id="voiceHistoryList" class="history-list">
+                <div class="history-empty">No commands executed yet.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Microcontroller Hardware View -->
+          <div class="card glass-card hardware-card">
+            <div class="card-header">
+              <h2>⚡ Microcontroller View</h2>
+              <div id="ledStateTag" class="led-tag off">LED OFF</div>
+            </div>
+            <div class="hardware-visual">
+              <div class="arduino-board">
+                <div class="board-label" id="boardLabel">ESP32 DevKit (GPIO 2)</div>
+                <div class="led-container">
+                  <div class="pin-label">Built-in LED Pin</div>
+                  <div id="visualLed" class="virtual-led off">
+                    <div class="led-glow"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Manual Control Buttons -->
+            <div class="manual-controls">
+              <div class="btn-group">
+                <button id="btnLedOn" class="btn btn-success">💡 Turn ON</button>
+                <button id="btnLedOff" class="btn btn-danger">🌙 Turn OFF</button>
+                <button id="btnLedToggle" class="btn btn-secondary">🔄 Toggle</button>
+              </div>
+            </div>
+
+            <!-- Hardware Telemetry info -->
+            <div class="telemetry-box" id="telemetryBox">
+              <div class="telemetry-item">
+                <span class="telemetry-label">Signal (RSSI):</span>
+                <span id="telemetryRssi" class="telemetry-val">--</span>
+              </div>
+              <div class="telemetry-item">
+                <span class="telemetry-label">Assigned IP:</span>
+                <span id="telemetryIp" class="telemetry-val">--</span>
+              </div>
+              <div class="telemetry-item">
+                <span class="telemetry-label">Uptime:</span>
+                <span id="telemetryUptime" class="telemetry-val">--</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: Wi-Fi Setup -->
+      <section id="tab-wifi-setup" class="tab-content">
+        <div class="card glass-card">
+          <div class="card-header">
+            <h2>⚙️ Configure ESP32 Wi-Fi Credentials</h2>
+            <button id="rebootEsp32Btn" class="btn btn-secondary btn-sm" title="Reboot ESP32 hardware cleanly">
+              🔄 Reboot Device
+            </button>
+          </div>
+          <p class="subtitle" style="margin-bottom: 20px;">
+            Send your Home Wi-Fi or Mobile Hotspot credentials directly to your ESP32 board over Wi-Fi or USB Serial.
+            The board will save credentials to non-volatile flash storage and reboot cleanly.
+          </p>
+
+          <form id="wifiSetupForm">
+            <div class="form-group">
+              <label for="wifiSsid">Wi-Fi / Hotspot Network Name (SSID):</label>
+              <input type="text" id="wifiSsid" placeholder="e.g. Home_WiFi or MyPhoneHotspot" required>
+            </div>
+
+            <div class="form-group">
+              <label for="wifiPassword">Wi-Fi / Hotspot Password:</label>
+              <input type="password" id="wifiPassword" placeholder="Password (leave empty if open network)">
+            </div>
+
+            <button type="submit" id="wifiSubmitBtn" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
+              📶 Save Credentials & Reboot ESP32
+            </button>
+          </form>
+
+          <div id="wifiStatusMsg"></div>
+
+          <div class="info-alert">
+            <strong>Step-by-Step Wireless Setup & Auto-Reboot:</strong>
+            <div class="guide-steps" style="margin-top: 12px;">
+              <div class="step-card">
+                <div class="step-num">1</div>
+                <div class="step-content">
+                  <strong>Power on ESP32</strong>
+                  <p>Flash the updated ESP32 firmware from the Firmware Guide tab and power on your board.</p>
+                </div>
+              </div>
+              <div class="step-card">
+                <div class="step-num">2</div>
+                <div class="step-content">
+                  <strong>Connect to Access Point</strong>
+                  <p>Connect your computer or phone to Wi-Fi: <code>ESP32_Sara_Setup</code> (Password: <code>12345678</code>).</p>
+                </div>
+              </div>
+              <div class="step-card">
+                <div class="step-num">3</div>
+                <div class="step-content">
+                  <strong>Send Credentials & Auto Reboot</strong>
+                  <p>Set IP address to <code>192.168.4.1</code>, click <strong>Test Connection</strong>, enter your SSID/Password above, and submit. The board will reboot and register as <code>http://sara.local</code> on your Wi-Fi!</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: Custom Voice Trainer -->
+      <section id="tab-trainer" class="tab-content">
+        <div class="card glass-card">
+          <div class="card-header">
+            <h2>🎓 Custom Voice Command Trainer</h2>
+          </div>
+          <p class="subtitle" style="margin-bottom: 20px;">
+            Add custom phrases and trigger actions (stored locally in your browser).
+          </p>
+
+          <form id="trainerForm">
+            <div class="form-group">
+              <label for="customPhrase">Spoken Phrase (Keyword or Trigger):</label>
+              <input type="text" id="customPhrase" placeholder="e.g. ignite the lights, turn on matrix, night mode" required>
+            </div>
+
+            <div class="form-group">
+              <label for="customAction">Trigger Action:</label>
+              <select id="customAction">
+                <option value="ON">💡 Turn LED ON</option>
+                <option value="OFF">🌙 Turn LED OFF</option>
+                <option value="TOGGLE">🔄 Toggle LED State</option>
+              </select>
+            </div>
+
+            <button type="submit" id="addPhraseBtn" class="btn btn-primary">
+              ➕ Add Command Rule
+            </button>
+          </form>
+
+          <div id="trainerToast"></div>
+
+          <div style="margin-top: 30px;">
+            <h3 style="font-size: 16px; margin-bottom: 14px;">Active Voice Rules:</h3>
+            <div id="phraseList">
+              <!-- Dynamically populated via app.js -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: Firmware & Setup Guide -->
+      <section id="tab-guide" class="tab-content">
+        <div class="setup-guide-container">
+          <!-- ESP32 Instructions & Firmware Code -->
+          <div class="card glass-card">
+            <div class="card-header">
+              <h2>📖 ESP32 DevKit Wiring & Firmware (with mDNS & Auto-Reboot)</h2>
+            </div>
+            
+            <div class="guide-steps">
+              <div class="step-card">
+                <div class="step-num">1</div>
+                <div class="step-content">
+                  <strong>ESP32 Hardware Wiring</strong>
+                  <p>The built-in LED on ESP32 DevKit is connected to <strong>GPIO 2</strong>. For external LED control, connect an LED with a 220Ω resistor between <strong>GPIO 2</strong> and <strong>GND</strong>.</p>
+                </div>
+              </div>
+
+              <div class="step-card">
+                <div class="step-num">2</div>
+                <div class="step-content">
+                  <strong>Flash Code via Arduino IDE</strong>
+                  <p>In Arduino IDE, select <code>ESP32 Dev Module</code>, set Baud to <code>115200</code>, copy the code below, and click <strong>Upload</strong>. Open Serial Monitor (115200) to see connection logs.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="code-card">
+              <div class="code-header">
+                <span>📄 esp32_voice_assistant.ino</span>
+                <button id="copyEsp32CodeBtn" class="btn btn-sm btn-primary">📋 Copy ESP32 Code</button>
+              </div>
+              <pre class="code-block"><code id="esp32CodeBlock">/*
+  ========================================================================
+  ESP32 AI Voice Assistant Firmware
+  Features:
+    - Non-Volatile Preferences storage for Wi-Fi SSID & Password
+    - Automatic ESP.restart() after credential updates
+    - mDNS support: Access via http://sara.local
+    - Dual SoftAP + Station WiFi Mode with auto-reconnect fallback
+    - Web Server REST API (/status, /led/on, /led/off, /led/toggle, /wifi/save, /reboot)
+    - USB Web Serial command processor (115200 Baud)
+  ========================================================================
+*/
+#include &lt;WiFi.h&gt;
+#include &lt;WebServer.h&gt;
+#include &lt;Preferences.h&gt;
+#include &lt;ESPmDNS.h&gt;
+
+#define LED_PIN 2
+
+WebServer server(80);
+Preferences preferences;
+
+bool ledState = false;
+String wifiSSID = "";
+String wifiPASS = "";
+unsigned long bootTime = 0;
+
+void setLed(bool state) {
+  ledState = state;
+  digitalWrite(LED_PIN, ledState ? HIGH : LOW);
+}
+
+void sendCORSHeader() {
+  server.sendHeader("Access-Control-Allow-Origin", "*");
+  server.sendHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  server.sendHeader("Access-Control-Allow-Headers", "*");
+}
+
+void handleStatus() {
+  sendCORSHeader();
+  unsigned long uptimeSec = (millis() - bootTime) / 1000;
+  int rssi = WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0;
+  String ipStr = WiFi.status() == WL_CONNECTED ? WiFi.localIP().toString() : WiFi.softAPIP().toString();
+
+  String json = "{";
+  json += "\"status\":\"online\",";
+  json += "\"led\":" + String(ledState ? 1 : 0) + ",";
+  json += "\"wifi_connected\":" + String(WiFi.status() == WL_CONNECTED ? "true" : "false") + ",";
+  json += "\"ip\":\"" + ipStr + "\",";
+  json += "\"rssi\":" + String(rssi) + ",";
+  json += "\"uptime\":" + String(uptimeSec);
+  json += "}";
+
+  server.send(200, "application/json", json);
+}
+
+void handleLedOn() {
+  setLed(true);
+  handleStatus();
+}
+
+void handleLedOff() {
+  setLed(false);
+  handleStatus();
+}
+
+void handleLedToggle() {
+  setLed(!ledState);
+  handleStatus();
+}
+
+void handleReboot() {
+  sendCORSHeader();
+  server.send(200, "application/json", "{\"status\":\"rebooting\",\"message\":\"ESP32 is restarting...\"}");
+  delay(1000);
+  ESP.restart();
+}
+
+void handleWifiSave() {
+  sendCORSHeader();
+  if (server.hasArg("ssid")) {
+    wifiSSID = server.arg("ssid");
+    wifiPASS = server.hasArg("pass") ? server.arg("pass") : "";
+
+    preferences.begin("wifi_config", false);
+    preferences.putString("ssid", wifiSSID);
+    preferences.putString("pass", wifiPASS);
+    preferences.end();
+
+    server.send(200, "application/json", "{\"status\":\"saved\",\"message\":\"Credentials saved! ESP32 is restarting now...\"}");
+    
+    Serial.println("Wi-Fi Credentials Saved. Restarting ESP32...");
+    delay(1500);
+    ESP.restart();
+  } else {
+    server.send(400, "application/json", "{\"error\":\"Missing ssid parameter\"}");
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, LOW);
+  bootTime = millis();
+
+  // Load saved Wi-Fi credentials from Flash Preferences
+  preferences.begin("wifi_config", true);
+  wifiSSID = preferences.getString("ssid", "");
+  wifiPASS = preferences.getString("pass", "");
+  preferences.end();
+
+  // Enable AP Mode for initial setup
+  WiFi.mode(WIFI_AP_STA);
+  WiFi.softAP("ESP32_Sara_Setup", "12345678");
+  Serial.println("------------------------------------------");
+  Serial.println("SoftAP Started: ESP32_Sara_Setup (Pass: 12345678)");
+  Serial.println("AP IP address: " + WiFi.softAPIP().toString());
+
+  // If Wi-Fi credentials saved, attempt to connect to router
+  if (wifiSSID.length() &gt; 0) {
+    Serial.println("Connecting to Wi-Fi SSID: " + wifiSSID);
+    WiFi.begin(wifiSSID.c_str(), wifiPASS.c_str());
+
+    int attempts = 0;
+    while (WiFi.status() != WL_CONNECTED &amp;&amp; attempts &lt; 20) {
+      delay(500);
+      Serial.print(".");
+      attempts++;
+    }
+
+    if (WiFi.status() == WL_CONNECTED) {
+      Serial.println("\n✅ Wi-Fi Connected!");
+      Serial.println("Station IP: " + WiFi.localIP().toString());
+    } else {
+      Serial.println("\n⚠️ Wi-Fi connection timed out. SoftAP remains active.");
+    }
+  }
+
+  // Start mDNS responder (allows http://sara.local access)
+  if (MDNS.begin("sara")) {
+    Serial.println("✨ mDNS responder started: http://sara.local");
+  }
+
+  // Define HTTP REST endpoints
+  server.on("/status", HTTP_GET, handleStatus);
+  server.on("/led/on", HTTP_GET, handleLedOn);
+  server.on("/led/off", HTTP_GET, handleLedOff);
+  server.on("/led/toggle", HTTP_GET, handleLedToggle);
+  server.on("/wifi/save", HTTP_GET, handleWifiSave);
+  server.on("/reboot", HTTP_GET, handleReboot);
+
+  // Enable CORS preflight OPTIONS request handling
+  server.onNotFound([]() {
+    if (server.method() == HTTP_OPTIONS) {
+      sendCORSHeader();
+      server.send(204);
+    } else {
+      server.send(404, "text/plain", "Not found");
+    }
+  });
+
+  server.begin();
+  Serial.println("🚀 HTTP Web Server Started.");
+  Serial.println("------------------------------------------");
+}
+
+void loop() {
+  server.handleClient();
+
+  // Process incoming USB Serial commands
+  if (Serial.available() &gt; 0) {
+    String cmd = Serial.readStringUntil('\n');
+    cmd.trim();
+    cmd.toUpperCase();
+
+    if (cmd == "LED_ON" || cmd == "ON" || cmd == "1") {
+      setLed(true);
+      Serial.println("STATUS:ON");
+    } else if (cmd == "LED_OFF" || cmd == "OFF" || cmd == "0") {
+      setLed(false);
+      Serial.println("STATUS:OFF");
+    } else if (cmd == "LED_TOGGLE" || cmd == "TOGGLE") {
+      setLed(!ledState);
+      Serial.println(ledState ? "STATUS:ON" : "STATUS:OFF");
+    } else if (cmd == "STATUS") {
+      Serial.println(ledState ? "STATUS:ON" : "STATUS:OFF");
+    } else if (cmd == "REBOOT") {
+      Serial.println("Rebooting ESP32...");
+      delay(500);
+      ESP.restart();
+    } else if (cmd.startsWith("WIFI:")) {
+      int commaPos = cmd.indexOf(',');
+      if (commaPos &gt; 5) {
+        String ssid = cmd.substring(5, commaPos);
+        String pass = cmd.substring(commaPos + 1);
+        preferences.begin("wifi_config", false);
+        preferences.putString("ssid", ssid);
+        preferences.putString("pass", pass);
+        preferences.end();
+        Serial.println("WIFI_SAVED:" + ssid + ". Restarting...");
+        delay(1000);
+        ESP.restart();
+      }
+    }
+  }
+}</code></pre>
+            </div>
+          </div>
+
+          <!-- Arduino Uno Instructions & Firmware Code -->
+          <div class="card glass-card">
+            <div class="card-header">
+              <h2>🔌 Arduino Uno / Nano USB Serial Firmware</h2>
+            </div>
+            
+            <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 15px;">
+              If using an Arduino Uno or Nano (ATmega328P without Wi-Fi), connect via USB cable, set baud rate to <code>115200</code> or <code>9600</code>, and upload the sketch below.
+            </p>
+
+            <div class="code-card">
+              <div class="code-header">
+                <span>📄 arduino_led_control.ino</span>
+                <button id="copyArduinoCodeBtn" class="btn btn-sm btn-primary">📋 Copy Arduino Code</button>
+              </div>
+              <pre class="code-block"><code id="arduinoCodeBlock">/*
+  Arduino Uno / Nano AI Voice Assistant - Web Serial Sketch
+  Baud rate: 115200
+*/
+const int LED_PIN = LED_BUILTIN; // Pin 13 on Arduino Uno
+bool ledState = false;
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, LOW);
+  Serial.println("ARDUINO UNO VOICE CONTROL READY");
+  Serial.println("STATUS:OFF");
+}
+
+void loop() {
+  if (Serial.available() &gt; 0) {
+    String input = Serial.readStringUntil('\n');
+    input.trim();
+    input.toUpperCase();
+
+    if (input == "1" || input == "ON" || input == "LED_ON") {
+      setLedState(true);
+    } else if (input == "0" || input == "OFF" || input == "LED_OFF") {
+      setLedState(false);
+    } else if (input == "TOGGLE" || input == "T" || input == "LED_TOGGLE") {
+      setLedState(!ledState);
+    } else if (input == "STATUS" || input == "S") {
+      reportStatus();
+    }
+  }
+}
+
+void setLedState(bool state) {
+  ledState = state;
+  digitalWrite(LED_PIN, ledState ? HIGH : LOW);
+  reportStatus();
+}
+
+void reportStatus() {
+  if (ledState) {
+    Serial.println("STATUS:ON");
+  } else {
+    Serial.println("STATUS:OFF");
+  }
+}</code></pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
