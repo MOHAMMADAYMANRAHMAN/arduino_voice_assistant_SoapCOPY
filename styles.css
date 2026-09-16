@@ -1,5 +1,5 @@
 /* ==========================================================================
-   ESP32 / Arduino AI Voice Assistant - Modern Dark Glassmorphic Theme
+   ESP32 / Arduino AI Voice Assistant & Smart Inventory Theme
    ========================================================================== */
 
 :root {
@@ -7,28 +7,33 @@
   --card-bg: rgba(15, 23, 42, 0.75);
   --card-border: rgba(255, 255, 255, 0.1);
   --glass-glow: rgba(0, 210, 255, 0.15);
-  
+
   --primary: #00d2ff;
   --primary-hover: #00b4db;
   --primary-glow: rgba(0, 210, 255, 0.4);
-  
+
+  --drinks-color: #00d2ff;
+  --soup-color: #a855f7;
+  --vegies-color: #10b981;
+  --staple-color: #f59e0b;
+
   --success: #10b981;
   --success-glow: rgba(16, 185, 129, 0.4);
   --danger: #ef4444;
   --danger-glow: rgba(239, 68, 68, 0.4);
   --warning: #f59e0b;
-  
+
   --text-main: #f8fafc;
   --text-muted: #94a3b8;
   --text-dim: #64748b;
-  
+
   --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'Fira Code', monospace;
-  
+
   --radius-lg: 16px;
   --radius-md: 10px;
   --radius-sm: 6px;
-  
+
   --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -93,9 +98,17 @@ body {
 }
 
 @keyframes floatBlob {
-  0% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(60px, 40px) scale(1.1); }
-  100% { transform: translate(-40px, 80px) scale(0.9); }
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  50% {
+    transform: translate(60px, 40px) scale(1.1);
+  }
+
+  100% {
+    transform: translate(-40px, 80px) scale(0.9);
+  }
 }
 
 /* --- Layout Container --- */
@@ -389,12 +402,12 @@ body {
   transition: var(--transition);
 }
 
-.toggle-switch input:checked + .slider {
+.toggle-switch input:checked+.slider {
   background: var(--primary);
   box-shadow: 0 0 10px var(--primary-glow);
 }
 
-.toggle-switch input:checked + .slider::before {
+.toggle-switch input:checked+.slider::before {
   transform: translateX(16px);
 }
 
@@ -455,16 +468,41 @@ body {
   animation: soundwave 1s infinite ease-in-out alternate;
 }
 
-.soundwave-container.active .bar:nth-child(1) { animation-delay: 0.1s; }
-.soundwave-container.active .bar:nth-child(2) { animation-delay: 0.3s; }
-.soundwave-container.active .bar:nth-child(3) { animation-delay: 0.2s; }
-.soundwave-container.active .bar:nth-child(4) { animation-delay: 0.4s; }
-.soundwave-container.active .bar:nth-child(5) { animation-delay: 0.15s; }
+.soundwave-container.active .bar:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.soundwave-container.active .bar:nth-child(2) {
+  animation-delay: 0.3s;
+}
+
+.soundwave-container.active .bar:nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+.soundwave-container.active .bar:nth-child(4) {
+  animation-delay: 0.4s;
+}
+
+.soundwave-container.active .bar:nth-child(5) {
+  animation-delay: 0.15s;
+}
 
 @keyframes soundwave {
-  0% { height: 6px; background: var(--primary); }
-  50% { height: 26px; background: #38bdf8; }
-  100% { height: 12px; background: #818cf8; }
+  0% {
+    height: 6px;
+    background: var(--primary);
+  }
+
+  50% {
+    height: 26px;
+    background: #38bdf8;
+  }
+
+  100% {
+    height: 12px;
+    background: #818cf8;
+  }
 }
 
 .mic-button {
@@ -497,9 +535,17 @@ body {
 }
 
 @keyframes micPulse {
-  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-  70% { box-shadow: 0 0 0 20px rgba(239, 68, 68, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+
+  70% {
+    box-shadow: 0 0 0 20px rgba(239, 68, 68, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
 }
 
 .voice-status {
@@ -777,6 +823,201 @@ body {
   font-weight: 600;
 }
 
+/* ==========================================================================
+   SMART INVENTORY & 4 CATEGORY SECTIONS STYLING
+   ========================================================================== */
+
+.inventory-form .form-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.flex-1 {
+  flex: 1;
+  min-width: 160px;
+}
+
+.flex-2 {
+  flex: 2;
+  min-width: 240px;
+}
+
+.inventory-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 850px) {
+  .inventory-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.category-card {
+  position: relative;
+  overflow: hidden;
+  transition: var(--transition);
+}
+
+.category-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.4);
+}
+
+.category-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 14px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.category-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.category-icon {
+  font-size: 24px;
+}
+
+.category-title h3 {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.count-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Category Specific Themes */
+.drinks-theme {
+  border-top: 3px solid var(--drinks-color);
+}
+
+.drinks-theme .category-title h3 {
+  color: var(--drinks-color);
+}
+
+.drinks-theme .count-badge {
+  background: rgba(0, 210, 255, 0.15);
+  color: var(--drinks-color);
+  border: 1px solid rgba(0, 210, 255, 0.3);
+}
+
+.soap-theme {
+  border-top: 3px solid var(--soap-color);
+}
+
+.soap-theme .category-title h3 {
+  color: var(--soap-color);
+}
+
+.soap-theme .count-badge {
+  background: rgba(168, 85, 247, 0.15);
+  color: var(--soap-color);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.vegies-theme {
+  border-top: 3px solid var(--vegies-color);
+}
+
+.vegies-theme .category-title h3 {
+  color: var(--vegies-color);
+}
+
+.vegies-theme .count-badge {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--vegies-color);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.staple-theme {
+  border-top: 3px solid var(--staple-color);
+}
+
+.staple-theme .category-title h3 {
+  color: var(--staple-color);
+}
+
+.staple-theme .count-badge {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--staple-color);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 80px;
+}
+
+.item-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(10, 15, 26, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  transition: var(--transition);
+}
+
+.item-card:hover {
+  background: rgba(10, 15, 26, 0.85);
+  border-color: rgba(0, 210, 255, 0.3);
+}
+
+.item-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.item-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.item-qty-badge {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--primary);
+  border: 1px solid rgba(0, 210, 255, 0.2);
+}
+
+.item-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.item-empty {
+  font-size: 13px;
+  color: var(--text-dim);
+  text-align: center;
+  padding: 20px;
+  background: rgba(10, 15, 26, 0.3);
+  border-radius: var(--radius-md);
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+}
+
 /* --- Button System --- */
 .btn {
   display: inline-flex;
@@ -904,8 +1145,15 @@ body {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-6px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* --- Active Voice Rules & Delete Buttons --- */

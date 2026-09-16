@@ -1,7 +1,7 @@
 // ==========================================================================
-// ESP32 / Arduino AI Voice Assistant Engine
-// Features: Continuous Speech Recognition, NLP Matching, Text Fallback,
-//           mDNS & WiFi Auto-Reboot, Web Serial with Baud Selection, History Log
+// ESP32 / Arduino AI Voice Assistant & Smart Inventory Engine
+// Features: Continuous Speech Recognition, NLP Matching, 4 Inventory Sections,
+//           Serial Monitor Item Dispatcher, mDNS & WiFi Auto-Reboot
 // ==========================================================================
 
 // --- State Management ---
@@ -14,7 +14,26 @@ let customCommands = [];
 let commandHistory = [];
 let isListening = false;
 let isManuallyStopped = false;
-let pollTimer = null;
+
+// 4 Inventory Category Sections State
+let inventoryData = {
+  "Drinks": [
+    { id: "d1", name: "Soda", quantity: "2 Cans" },
+    { id: "d2", name: "Orange Juice", quantity: "1 Liter" }
+  ],
+  "Soap": [
+    { id: "s1", name: "Hand Wash", quantity: "2 Bottles" },
+    { id: "s2", name: "Dish Soap", quantity: "1 Pack" }
+  ],
+  "Vegies": [
+    { id: "v1", name: "Tomatoes", quantity: "2 kg" },
+    { id: "v2", name: "Potatoes", quantity: "3 kg" }
+  ],
+  "Staple Meal": [
+    { id: "m1", name: "Basmati Rice", quantity: "5 kg" },
+    { id: "m2", name: "Pasta", quantity: "2 Boxes" }
+  ]
+};
 
 // --- DOM Elements ---
 const connectionMode = document.getElementById('connectionMode');
@@ -54,6 +73,22 @@ const sendTextCommandBtn = document.getElementById('sendTextCommandBtn');
 const voiceHistoryList = document.getElementById('voiceHistoryList');
 const clearHistoryBtn = document.getElementById('clearHistoryBtn');
 
+const addItemForm = document.getElementById('addItemForm');
+const itemCategorySelect = document.getElementById('itemCategory');
+const itemNameInput = document.getElementById('itemName');
+const itemQuantityInput = document.getElementById('itemQuantity');
+const inventoryToast = document.getElementById('inventoryToast');
+
+const drinksList = document.getElementById('drinksList');
+const soapList = document.getElementById('soapList');
+const vegiesList = document.getElementById('vegiesList');
+const stapleList = document.getElementById('stapleList');
+
+const drinksCountBadge = document.getElementById('drinksCountBadge');
+const soapCountBadge = document.getElementById('soapCountBadge');
+const vegiesCountBadge = document.getElementById('vegiesCountBadge');
+const stapleCountBadge = document.getElementById('stapleCountBadge');
+
 const wifiSetupForm = document.getElementById('wifiSetupForm');
 const wifiStatusMsg = document.getElementById('wifiStatusMsg');
 const rebootEsp32Btn = document.getElementById('rebootEsp32Btn');
@@ -67,7 +102,7 @@ const trainerToast = document.getElementById('trainerToast');
 const copyEsp32CodeBtn = document.getElementById('copyEsp32CodeBtn');
 const copyArduinoCodeBtn = document.getElementById('copyArduinoCodeBtn');
 
-// Default Built-in Rules
+// Default Built-in LED Rules
 const builtinRules = [
   { phrases: ["turn on", "light on", "start", "lamp on", "enable", "led on"], action: "ON" },
   { phrases: ["turn off", "light off", "stop", "lamp off", "disable", "led off"], action: "OFF" },
@@ -77,11 +112,14 @@ const builtinRules = [
 // --- Initialization ---
 document.addEventListener('DOMContentLoaded', () => {
   loadCustomCommands();
+  loadInventory();
   renderPhraseList();
+  renderInventory();
   setupCodeCopying();
   setupSpeechRecognition();
   setupTextCommands();
   setupHistoryLog();
+  setupInventoryHandlers();
 
   // Initial status check attempt
   setTimeout(() => {
@@ -186,9 +224,8 @@ async function sendWifiCommand(endpoint) {
       return data;
     }
   } catch (err) {
-    console.warn('Wi-Fi CORS request failed, attempting fallback...', err);
+    console.warn('Wi-Fi request warning:', err);
     try {
-      // Fallback request without CORS
       await fetch(url, { method: 'GET', mode: 'no-cors' });
       updateConnectionStatus(true, 'Online (no-cors)');
       return { status: 'sent' };
@@ -227,9 +264,8 @@ if (wifiSetupForm) {
       return;
     }
 
-    showWifiStatus("Sending Wi-Fi credentials to ESP32...", true, false);
+    showWifiStatus("Sending Wi-Fi credentials to ESP32...", true);
 
-    // If connected via Web Serial
     if (serialWriter && currentMode === 'serial') {
       try {
         await sendSerialCommand(`WIFI:${ssid},${pass}`);
@@ -241,14 +277,12 @@ if (wifiSetupForm) {
       }
     }
 
-    // Wi-Fi HTTP mode
-    const url = `${getBaseUrl()}/wifi/save?ssid=${encodeURIComponent(ssid)}&pass=${encodeURIComponent(pass)}`;
     try {
       await sendWifiCommand(`/wifi/save?ssid=${encodeURIComponent(ssid)}&pass=${encodeURIComponent(pass)}`);
-      showWifiStatus(`Credentials saved for "${ssid}"! The ESP32 is restarting. Please connect your phone/laptop to "${ssid}" and access http://sara.local.`, true);
+      showWifiStatus(`Credentials saved for "${ssid}"! The ESP32 is restarting. Connect to "${ssid}" and access http://sara.local.`, true);
       speak("Wi-Fi credentials saved! Device is restarting.");
     } catch (err) {
-      showWifiStatus("Could not reach ESP32. Ensure you are connected to the 'ESP32_Sara_Setup' network at 192.168.4.1.", false);
+      showWifiStatus("Could not reach ESP32. Ensure you are connected to 'ESP32_Sara_Setup' network at 192.168.4.1.", false);
       speak("Failed to send Wi-Fi credentials");
     }
   });
@@ -290,7 +324,6 @@ serialConnectBtn.addEventListener('click', async () => {
     updateConnectionStatus(true, `Serial (${selectedBaud})`);
     speak("Serial connected successfully");
     
-    // Start Serial Reader Loop
     readSerialLoop();
   } catch (err) {
     console.error("Serial connection error:", err);
@@ -328,7 +361,7 @@ async function sendSerialCommand(cmd) {
   }
 }
 
-// --- 5. Unified Command Dispatcher ---
+// --- 5. Unified Command & Item Dispatcher ---
 async function executeCommand(action, sourceText = "", source = "Voice") {
   if (action === 'ON') {
     setLedUI(true);
@@ -347,15 +380,154 @@ async function executeCommand(action, sourceText = "", source = "Voice") {
     else await sendSerialCommand('LED_TOGGLE');
   }
 
-  // Add to History Log
   addHistoryItem(sourceText || action, action, source);
+}
+
+// ITEM SERIAL DISPATCHER (Sends Item Name & Quantity to Serial Monitor)
+async function sendItemToSerial(category, name, quantity, source = "UI") {
+  const payload = `ITEM:${category},${name},${quantity}`;
+  console.log("🚀 [DISPATCHING ITEM TO SERIAL MONITOR]:", payload);
+
+  if (currentMode === 'wifi') {
+    await sendWifiCommand(`/item?cat=${encodeURIComponent(category)}&name=${encodeURIComponent(name)}&qty=${encodeURIComponent(quantity)}`);
+  } else {
+    await sendSerialCommand(payload);
+  }
+
+  speak(`Printed ${quantity} ${name} in ${category} to serial monitor.`);
+  showInventoryToast(`Printed to Serial Monitor: ${name} (${quantity}) under ${category}`, true);
+  addHistoryItem(`Print ${name} (${quantity})`, `DISPATCH:${category}`, source);
 }
 
 btnLedOn.addEventListener('click', () => executeCommand('ON', 'Manual Button', 'UI'));
 btnLedOff.addEventListener('click', () => executeCommand('OFF', 'Manual Button', 'UI'));
 btnLedToggle.addEventListener('click', () => executeCommand('TOGGLE', 'Manual Button', 'UI'));
 
-// --- 6. Speech Recognition Engine & NLP ---
+// --- 6. 4-Category Inventory Manager Logic ---
+function loadInventory() {
+  try {
+    const stored = localStorage.getItem('esp32_voice_assistant_inventory');
+    if (stored) {
+      inventoryData = JSON.parse(stored);
+    }
+  } catch (e) {
+    console.error("Could not load inventory:", e);
+  }
+}
+
+function saveInventory() {
+  try {
+    localStorage.setItem('esp32_voice_assistant_inventory', JSON.stringify(inventoryData));
+  } catch (e) {}
+}
+
+function renderInventory() {
+  renderCategoryList("Drinks", drinksList, drinksCountBadge);
+  renderCategoryList("Soap", soapList, soapCountBadge);
+  renderCategoryList("Vegies", vegiesList, vegiesCountBadge);
+  renderCategoryList("Staple Meal", stapleList, stapleCountBadge);
+}
+
+function renderCategoryList(category, containerEl, badgeEl) {
+  if (!containerEl) return;
+  const items = inventoryData[category] || [];
+  if (badgeEl) badgeEl.textContent = `${items.length} Items`;
+
+  if (items.length === 0) {
+    containerEl.innerHTML = `<div class="item-empty">No items in ${category}. Use form above to add.</div>`;
+    return;
+  }
+
+  containerEl.innerHTML = items.map(item => `
+    <div class="item-card">
+      <div class="item-info">
+        <span class="item-name">${escapeHtml(item.name)}</span>
+        <span class="item-qty-badge">${escapeHtml(item.quantity)}</span>
+      </div>
+      <div class="item-actions">
+        <button class="btn btn-sm btn-primary print-item-btn" 
+                data-category="${escapeHtml(category)}" 
+                data-name="${escapeHtml(item.name)}" 
+                data-qty="${escapeHtml(item.quantity)}" 
+                title="Print item name and quantity to Serial Monitor">
+          🖨️ Print Serial
+        </button>
+        <button class="btn btn-sm btn-danger delete-item-btn" 
+                data-category="${escapeHtml(category)}" 
+                data-id="${item.id}" 
+                title="Delete item">
+          🗑️
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function setupInventoryHandlers() {
+  if (addItemForm) {
+    addItemForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const category = itemCategorySelect.value;
+      const name = itemNameInput.value.trim();
+      const quantity = itemQuantityInput.value.trim();
+
+      if (!name || !quantity) {
+        showInventoryToast("Please provide both Item Name and Quantity.", false);
+        return;
+      }
+
+      const newItem = {
+        id: Date.now().toString(),
+        name: name,
+        quantity: quantity
+      };
+
+      if (!inventoryData[category]) inventoryData[category] = [];
+      inventoryData[category].push(newItem);
+      saveInventory();
+      renderInventory();
+
+      // Automatically print newly added item to Serial Monitor
+      sendItemToSerial(category, name, quantity, "Form Add");
+
+      itemNameInput.value = '';
+      itemQuantityInput.value = '';
+    });
+  }
+
+  // Event Delegation for Print to Serial & Delete buttons
+  document.addEventListener('click', (e) => {
+    const printBtn = e.target.closest('.print-item-btn');
+    if (printBtn) {
+      const cat = printBtn.dataset.category;
+      const name = printBtn.dataset.name;
+      const qty = printBtn.dataset.qty;
+      sendItemToSerial(cat, name, qty, "UI Card");
+      return;
+    }
+
+    const deleteBtn = e.target.closest('.delete-item-btn');
+    if (deleteBtn) {
+      const cat = deleteBtn.dataset.category;
+      const id = deleteBtn.dataset.id;
+      if (inventoryData[cat]) {
+        inventoryData[cat] = inventoryData[cat].filter(item => item.id !== id);
+        saveInventory();
+        renderInventory();
+        speak("Item deleted");
+      }
+    }
+  });
+}
+
+function showInventoryToast(msg, isSuccess) {
+  if (!inventoryToast) return;
+  const badgeClass = isSuccess ? 'toast-success' : 'toast-error';
+  inventoryToast.innerHTML = `<div class="toast-msg ${badgeClass}">${msg}</div>`;
+  setTimeout(() => { inventoryToast.innerHTML = ''; }, 4000);
+}
+
+// --- 7. Speech Recognition Engine & NLP ---
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 let recognition = null;
 
@@ -398,7 +570,6 @@ function setupSpeechRecognition() {
     micBtn.classList.remove('active');
     if (soundwave) soundwave.classList.remove('active');
 
-    // Auto-restart if Continuous Listening is turned ON and not manually stopped
     if (continuousListenToggle.checked && !isManuallyStopped) {
       voiceStatus.textContent = "Continuous Mode active. Listening...";
       setTimeout(() => {
@@ -439,7 +610,7 @@ function setupSpeechRecognition() {
   });
 }
 
-// NLP & Regex Command Processor
+// Enhanced NLP & Regex Command Processor (Handles LED Controls & Inventory Dispatches)
 function processVoiceCommand(text, source = 'Voice') {
   const cleanText = text.trim().toLowerCase();
   const wakeWordRequired = wakeWordToggle.checked;
@@ -451,7 +622,7 @@ function processVoiceCommand(text, source = 'Voice') {
     }
   }
 
-  // 1. Custom Trained Rules First
+  // 1. Check Custom Trained Rules First
   for (let rule of customCommands) {
     if (cleanText.includes(rule.phrase.toLowerCase())) {
       voiceStatus.textContent = `Triggered custom rule: "${rule.phrase}"`;
@@ -460,7 +631,21 @@ function processVoiceCommand(text, source = 'Voice') {
     }
   }
 
-  // 2. Strict Regex Matching for Built-in Commands
+  // 2. Check Inventory Item Dispatch Commands (e.g. "send soda", "print soap", "dispatch rice")
+  for (let cat in inventoryData) {
+    for (let item of inventoryData[cat]) {
+      const itemNameLower = item.name.toLowerCase();
+      if (cleanText.includes(itemNameLower) || cleanText.includes(cat.toLowerCase())) {
+        if (cleanText.includes('send') || cleanText.includes('print') || cleanText.includes('dispatch') || cleanText.includes('order')) {
+          voiceStatus.textContent = `Item command matched: ${item.name} (${cat})`;
+          sendItemToSerial(cat, item.name, item.quantity, source);
+          return;
+        }
+      }
+    }
+  }
+
+  // 3. Built-in LED Commands
   const onRegex = /\b(on|turn on|light on|enable|start|power on|switch on|led on|ignite)\b/i;
   const offRegex = /\b(off|turn off|light off|disable|stop|power off|switch off|led off)\b/i;
   const toggleRegex = /\b(toggle|switch|flip|change state|change led)\b/i;
@@ -480,7 +665,7 @@ function processVoiceCommand(text, source = 'Voice') {
   }
 }
 
-// --- 7. Text Command Fallback Input ---
+// --- 8. Text Command Fallback Input ---
 function setupTextCommands() {
   if (!sendTextCommandBtn || !commandTextInput) return;
 
@@ -498,7 +683,7 @@ function setupTextCommands() {
   });
 }
 
-// --- 8. Voice Command History Log ---
+// --- 9. Voice Command History Log ---
 function setupHistoryLog() {
   if (clearHistoryBtn) {
     clearHistoryBtn.addEventListener('click', () => {
@@ -528,7 +713,8 @@ function renderHistoryLog() {
   }
 
   voiceHistoryList.innerHTML = commandHistory.map(item => {
-    const badgeClass = item.action === 'ON' ? 'action-on' : item.action === 'OFF' ? 'action-off' : item.action === 'TOGGLE' ? 'action-toggle' : 'action-off';
+    const isDispatch = item.action.startsWith('DISPATCH:');
+    const badgeClass = item.action === 'ON' ? 'action-on' : item.action === 'OFF' ? 'action-off' : isDispatch ? 'action-on' : 'action-toggle';
     return `
       <div class="history-item">
         <div>
@@ -544,7 +730,7 @@ function renderHistoryLog() {
   }).join('');
 }
 
-// --- 9. Custom Voice Command Trainer Engine ---
+// --- 10. Custom Voice Command Trainer Engine ---
 function loadCustomCommands() {
   try {
     const stored = localStorage.getItem('esp32_voice_assistant_custom_commands');
@@ -564,7 +750,6 @@ function renderPhraseList() {
   if (!phraseList) return;
   phraseList.innerHTML = '';
 
-  // Render Built-in Rules
   builtinRules.forEach(rule => {
     const item = document.createElement('div');
     item.className = 'rule-item';
@@ -579,7 +764,6 @@ function renderPhraseList() {
     phraseList.appendChild(item);
   });
 
-  // Render Custom Rules
   customCommands.forEach(rule => {
     const item = document.createElement('div');
     item.className = 'rule-item';
@@ -594,7 +778,6 @@ function renderPhraseList() {
     phraseList.appendChild(item);
   });
 
-  // Attach Delete Handlers
   const deleteBtns = phraseList.querySelectorAll('.delete-rule-btn');
   deleteBtns.forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -649,14 +832,14 @@ function escapeHtml(text) {
 
 function speak(message) {
   if (ttsToggle.checked && 'speechSynthesis' in window) {
-    window.speechSynthesis.cancel(); // cancel previous active utterances
+    window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(message);
     utterance.rate = 1.0;
     window.speechSynthesis.speak(utterance);
   }
 }
 
-// --- 10. Code Block Clipboard Copy Utility ---
+// --- 11. Code Block Clipboard Copy Utility ---
 function setupCodeCopying() {
   if (copyEsp32CodeBtn) {
     copyEsp32CodeBtn.addEventListener('click', () => {

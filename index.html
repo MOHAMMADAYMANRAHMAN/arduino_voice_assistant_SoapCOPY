@@ -24,7 +24,7 @@
         <div class="logo-icon">✨</div>
         <div>
           <h1>ESP32 & Arduino Voice Assistant</h1>
-          <p class="subtitle">Control Microcontrollers via Wi-Fi REST API, mDNS (sara.local), or USB Web Serial</p>
+          <p class="subtitle">Control Microcontrollers & Smart Inventory via Wi-Fi REST API, mDNS (sara.local), or USB Serial</p>
         </div>
       </div>
 
@@ -71,6 +71,7 @@
     <!-- Navigation Tabs -->
     <nav class="nav-tabs">
       <button class="tab-btn active" data-tab="assistant">🎙️ AI Assistant</button>
+      <button class="tab-btn" data-tab="inventory">🛒 Inventory Items</button>
       <button class="tab-btn" data-tab="wifi-setup">⚙️ Wi-Fi Setup</button>
       <button class="tab-btn" data-tab="trainer">🎓 Custom Trainer</button>
       <button class="tab-btn" data-tab="guide">📖 Firmware & Setup Guide</button>
@@ -130,7 +131,7 @@
             <div class="text-command-box">
               <label for="commandTextInput" class="text-command-label">💬 Type Command (Voice Fallback):</label>
               <div class="input-group">
-                <input type="text" id="commandTextInput" placeholder="e.g., turn on LED, turn off, toggle light..." autocomplete="off">
+                <input type="text" id="commandTextInput" placeholder="e.g., turn on LED, send 2 sodas, dispatch soap..." autocomplete="off">
                 <button id="sendTextCommandBtn" class="btn btn-primary">
                   <span>Send</span> ➔
                 </button>
@@ -200,7 +201,110 @@
         </div>
       </section>
 
-      <!-- TAB 2: Wi-Fi Setup -->
+      <!-- TAB 2: Smart Inventory Items (4 Sections) -->
+      <section id="tab-inventory" class="tab-content">
+        <!-- Add Item Form Card -->
+        <div class="card glass-card" style="margin-bottom: 24px;">
+          <div class="card-header">
+            <h2>➕ Add Custom Item & Print to Serial Monitor</h2>
+          </div>
+          <p class="subtitle" style="margin-bottom: 20px;">
+            Select a category (Drinks, Soap, Vegies, Staple Meal), enter item name and quantity, then click Add & Print. The item details will be transmitted and printed directly on the Serial Monitor!
+          </p>
+
+          <form id="addItemForm" class="inventory-form">
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label for="itemCategory">Category:</label>
+                <select id="itemCategory" class="custom-select" required>
+                  <option value="Drinks">🥤 Drinks</option>
+                  <option value="Soap">🧼 Soap</option>
+                  <option value="Vegies">🥦 Vegies</option>
+                  <option value="Staple Meal">🍚 Staple Meal</option>
+                </select>
+              </div>
+
+              <div class="form-group flex-2">
+                <label for="itemName">Item Name:</label>
+                <input type="text" id="itemName" placeholder="e.g. Orange Juice, Hand Wash, Tomato, Basmati Rice" required>
+              </div>
+
+              <div class="form-group flex-1">
+                <label for="itemQuantity">Quantity:</label>
+                <input type="text" id="itemQuantity" placeholder="e.g. 2 Bottles, 5 kg, 3 Bars" required>
+              </div>
+            </div>
+
+            <button type="submit" id="addItemBtn" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
+              🚀 Add Item & Print to Serial Monitor
+            </button>
+          </form>
+          <div id="inventoryToast"></div>
+        </div>
+
+        <!-- 4 Categorized Inventory Grid -->
+        <div class="inventory-grid">
+          
+          <!-- Category 1: Drinks -->
+          <div class="card glass-card category-card drinks-theme">
+            <div class="category-header">
+              <div class="category-title">
+                <span class="category-icon">🥤</span>
+                <h3>Drinks</h3>
+              </div>
+              <span id="drinksCountBadge" class="count-badge">0 Items</span>
+            </div>
+            <div id="drinksList" class="item-list">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- Category 2: Soap -->
+          <div class="card glass-card category-card soap-theme">
+            <div class="category-header">
+              <div class="category-title">
+                <span class="category-icon">🧼</span>
+                <h3>Soap</h3>
+              </div>
+              <span id="soapCountBadge" class="count-badge">0 Items</span>
+            </div>
+            <div id="soapList" class="item-list">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- Category 3: Vegies -->
+          <div class="card glass-card category-card vegies-theme">
+            <div class="category-header">
+              <div class="category-title">
+                <span class="category-icon">🥦</span>
+                <h3>Vegies</h3>
+              </div>
+              <span id="vegiesCountBadge" class="count-badge">0 Items</span>
+            </div>
+            <div id="vegiesList" class="item-list">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- Category 4: Staple Meal -->
+          <div class="card glass-card category-card staple-theme">
+            <div class="category-header">
+              <div class="category-title">
+                <span class="category-icon">🍚</span>
+                <h3>Staple Meal</h3>
+              </div>
+              <span id="stapleCountBadge" class="count-badge">0 Items</span>
+            </div>
+            <div id="stapleList" class="item-list">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- TAB 3: Wi-Fi Setup -->
       <section id="tab-wifi-setup" class="tab-content">
         <div class="card glass-card">
           <div class="card-header">
@@ -261,7 +365,7 @@
         </div>
       </section>
 
-      <!-- TAB 3: Custom Voice Trainer -->
+      <!-- TAB 4: Custom Voice Trainer -->
       <section id="tab-trainer" class="tab-content">
         <div class="card glass-card">
           <div class="card-header">
@@ -302,13 +406,13 @@
         </div>
       </section>
 
-      <!-- TAB 4: Firmware & Setup Guide -->
+      <!-- TAB 5: Firmware & Setup Guide -->
       <section id="tab-guide" class="tab-content">
         <div class="setup-guide-container">
           <!-- ESP32 Instructions & Firmware Code -->
           <div class="card glass-card">
             <div class="card-header">
-              <h2>📖 ESP32 DevKit Wiring & Firmware (with mDNS & Auto-Reboot)</h2>
+              <h2>📖 ESP32 DevKit Firmware (with Item Dispatch & Serial Monitor Printing)</h2>
             </div>
             
             <div class="guide-steps">
@@ -316,7 +420,7 @@
                 <div class="step-num">1</div>
                 <div class="step-content">
                   <strong>ESP32 Hardware Wiring</strong>
-                  <p>The built-in LED on ESP32 DevKit is connected to <strong>GPIO 2</strong>. For external LED control, connect an LED with a 220Ω resistor between <strong>GPIO 2</strong> and <strong>GND</strong>.</p>
+                  <p>Built-in LED is on <strong>GPIO 2</strong>. Connect an external LED with a 220Ω resistor between <strong>GPIO 2</strong> and <strong>GND</strong>.</p>
                 </div>
               </div>
 
@@ -324,7 +428,7 @@
                 <div class="step-num">2</div>
                 <div class="step-content">
                   <strong>Flash Code via Arduino IDE</strong>
-                  <p>In Arduino IDE, select <code>ESP32 Dev Module</code>, set Baud to <code>115200</code>, copy the code below, and click <strong>Upload</strong>. Open Serial Monitor (115200) to see connection logs.</p>
+                  <p>In Arduino IDE, select <code>ESP32 Dev Module</code>, set Baud to <code>115200</code>, copy the code below, and click <strong>Upload</strong>. Open Serial Monitor (115200) to see connection logs and item dispatches.</p>
                 </div>
               </div>
             </div>
@@ -336,14 +440,14 @@
               </div>
               <pre class="code-block"><code id="esp32CodeBlock">/*
   ========================================================================
-  ESP32 AI Voice Assistant Firmware
+  ESP32 AI Voice Assistant & Smart Inventory Firmware
   Features:
+    - Serial Monitor Item Printer (Category, Item Name, Quantity)
+    - /item REST Endpoint & ITEM: Category,Name,Qty Serial Command
     - Non-Volatile Preferences storage for Wi-Fi SSID & Password
     - Automatic ESP.restart() after credential updates
     - mDNS support: Access via http://sara.local
-    - Dual SoftAP + Station WiFi Mode with auto-reconnect fallback
-    - Web Server REST API (/status, /led/on, /led/off, /led/toggle, /wifi/save, /reboot)
-    - USB Web Serial command processor (115200 Baud)
+    - Dual SoftAP + Station WiFi Mode
   ========================================================================
 */
 #include &lt;WiFi.h&gt;
@@ -370,6 +474,15 @@ void sendCORSHeader() {
   server.sendHeader("Access-Control-Allow-Origin", "*");
   server.sendHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   server.sendHeader("Access-Control-Allow-Headers", "*");
+}
+
+void printItemToSerial(String category, String name, String qty) {
+  Serial.println("\n==================================================");
+  Serial.println("📦 ITEM DISPATCHED TO SERIAL MONITOR");
+  Serial.println("   Category : " + category);
+  Serial.println("   Item Name: " + name);
+  Serial.println("   Quantity : " + qty);
+  Serial.println("==================================================\n");
 }
 
 void handleStatus() {
@@ -405,6 +518,18 @@ void handleLedToggle() {
   handleStatus();
 }
 
+void handleItem() {
+  sendCORSHeader();
+  String category = server.hasArg("cat") ? server.arg("cat") : "General";
+  String name = server.hasArg("name") ? server.arg("name") : "Unknown Item";
+  String qty = server.hasArg("qty") ? server.arg("qty") : "1";
+
+  printItemToSerial(category, name, qty);
+
+  String json = "{\"status\":\"printed\",\"category\":\"" + category + "\",\"name\":\"" + name + "\",\"qty\":\"" + qty + "\"}";
+  server.send(200, "application/json", json);
+}
+
 void handleReboot() {
   sendCORSHeader();
   server.send(200, "application/json", "{\"status\":\"rebooting\",\"message\":\"ESP32 is restarting...\"}");
@@ -423,7 +548,7 @@ void handleWifiSave() {
     preferences.putString("pass", wifiPASS);
     preferences.end();
 
-    server.send(200, "application/json", "{\"status\":\"saved\",\"message\":\"Credentials saved! ESP32 is restarting now...\"}");
+    server.send(200, "application/json", "{\"status\":\"saved\",\"message\":\"Credentials saved! ESP32 is restarting...\"}");
     
     Serial.println("Wi-Fi Credentials Saved. Restarting ESP32...");
     delay(1500);
@@ -439,20 +564,17 @@ void setup() {
   digitalWrite(LED_PIN, LOW);
   bootTime = millis();
 
-  // Load saved Wi-Fi credentials from Flash Preferences
   preferences.begin("wifi_config", true);
   wifiSSID = preferences.getString("ssid", "");
   wifiPASS = preferences.getString("pass", "");
   preferences.end();
 
-  // Enable AP Mode for initial setup
   WiFi.mode(WIFI_AP_STA);
   WiFi.softAP("ESP32_Sara_Setup", "12345678");
   Serial.println("------------------------------------------");
   Serial.println("SoftAP Started: ESP32_Sara_Setup (Pass: 12345678)");
   Serial.println("AP IP address: " + WiFi.softAPIP().toString());
 
-  // If Wi-Fi credentials saved, attempt to connect to router
   if (wifiSSID.length() &gt; 0) {
     Serial.println("Connecting to Wi-Fi SSID: " + wifiSSID);
     WiFi.begin(wifiSSID.c_str(), wifiPASS.c_str());
@@ -472,20 +594,18 @@ void setup() {
     }
   }
 
-  // Start mDNS responder (allows http://sara.local access)
   if (MDNS.begin("sara")) {
     Serial.println("✨ mDNS responder started: http://sara.local");
   }
 
-  // Define HTTP REST endpoints
   server.on("/status", HTTP_GET, handleStatus);
   server.on("/led/on", HTTP_GET, handleLedOn);
   server.on("/led/off", HTTP_GET, handleLedOff);
   server.on("/led/toggle", HTTP_GET, handleLedToggle);
+  server.on("/item", HTTP_GET, handleItem);
   server.on("/wifi/save", HTTP_GET, handleWifiSave);
   server.on("/reboot", HTTP_GET, handleReboot);
 
-  // Enable CORS preflight OPTIONS request handling
   server.onNotFound([]() {
     if (server.method() == HTTP_OPTIONS) {
       sendCORSHeader();
@@ -503,40 +623,34 @@ void setup() {
 void loop() {
   server.handleClient();
 
-  // Process incoming USB Serial commands
   if (Serial.available() &gt; 0) {
     String cmd = Serial.readStringUntil('\n');
     cmd.trim();
-    cmd.toUpperCase();
 
-    if (cmd == "LED_ON" || cmd == "ON" || cmd == "1") {
+    if (cmd.equalsIgnoreCase("LED_ON") || cmd.equalsIgnoreCase("ON") || cmd == "1") {
       setLed(true);
       Serial.println("STATUS:ON");
-    } else if (cmd == "LED_OFF" || cmd == "OFF" || cmd == "0") {
+    } else if (cmd.equalsIgnoreCase("LED_OFF") || cmd.equalsIgnoreCase("OFF") || cmd == "0") {
       setLed(false);
       Serial.println("STATUS:OFF");
-    } else if (cmd == "LED_TOGGLE" || cmd == "TOGGLE") {
+    } else if (cmd.equalsIgnoreCase("LED_TOGGLE") || cmd.equalsIgnoreCase("TOGGLE")) {
       setLed(!ledState);
       Serial.println(ledState ? "STATUS:ON" : "STATUS:OFF");
-    } else if (cmd == "STATUS") {
-      Serial.println(ledState ? "STATUS:ON" : "STATUS:OFF");
-    } else if (cmd == "REBOOT") {
+    } else if (cmd.startsWith("ITEM:")) {
+      // Format: ITEM:Category,Name,Quantity
+      String data = cmd.substring(5);
+      int c1 = data.indexOf(',');
+      int c2 = data.indexOf(',', c1 + 1);
+      if (c1 &gt; 0) {
+        String cat = data.substring(0, c1);
+        String name = (c2 &gt; 0) ? data.substring(c1 + 1, c2) : data.substring(c1 + 1);
+        String qty = (c2 &gt; 0) ? data.substring(c2 + 1) : "1";
+        printItemToSerial(cat, name, qty);
+      }
+    } else if (cmd.equalsIgnoreCase("REBOOT")) {
       Serial.println("Rebooting ESP32...");
       delay(500);
       ESP.restart();
-    } else if (cmd.startsWith("WIFI:")) {
-      int commaPos = cmd.indexOf(',');
-      if (commaPos &gt; 5) {
-        String ssid = cmd.substring(5, commaPos);
-        String pass = cmd.substring(commaPos + 1);
-        preferences.begin("wifi_config", false);
-        preferences.putString("ssid", ssid);
-        preferences.putString("pass", pass);
-        preferences.end();
-        Serial.println("WIFI_SAVED:" + ssid + ". Restarting...");
-        delay(1000);
-        ESP.restart();
-      }
     }
   }
 }</code></pre>
@@ -550,7 +664,7 @@ void loop() {
             </div>
             
             <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 15px;">
-              If using an Arduino Uno or Nano (ATmega328P without Wi-Fi), connect via USB cable, set baud rate to <code>115200</code> or <code>9600</code>, and upload the sketch below.
+              Arduino sketch updated with <code>ITEM:Category,Name,Quantity</code> serial monitor print handler.
             </p>
 
             <div class="code-card">
@@ -559,17 +673,25 @@ void loop() {
                 <button id="copyArduinoCodeBtn" class="btn btn-sm btn-primary">📋 Copy Arduino Code</button>
               </div>
               <pre class="code-block"><code id="arduinoCodeBlock">/*
-  Arduino Uno / Nano AI Voice Assistant - Web Serial Sketch
-  Baud rate: 115200
+  Arduino Uno / Nano AI Voice Assistant & Item Dispatch Sketch
 */
-const int LED_PIN = LED_BUILTIN; // Pin 13 on Arduino Uno
+const int LED_PIN = LED_BUILTIN;
 bool ledState = false;
+
+void printItemToSerial(String category, String name, String qty) {
+  Serial.println(F("\n=================================================="));
+  Serial.println(F("📦 ITEM DISPATCHED TO SERIAL MONITOR"));
+  Serial.print(F("   Category : ")); Serial.println(category);
+  Serial.print(F("   Item Name: ")); Serial.println(name);
+  Serial.print(F("   Quantity : ")); Serial.println(qty);
+  Serial.println(F("==================================================\n"));
+}
 
 void setup() {
   Serial.begin(115200);
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, LOW);
-  Serial.println("ARDUINO UNO VOICE CONTROL READY");
+  Serial.println("ARDUINO VOICE & ITEM DISPATCH CONTROL READY");
   Serial.println("STATUS:OFF");
 }
 
@@ -577,16 +699,23 @@ void loop() {
   if (Serial.available() &gt; 0) {
     String input = Serial.readStringUntil('\n');
     input.trim();
-    input.toUpperCase();
 
-    if (input == "1" || input == "ON" || input == "LED_ON") {
+    if (input == "1" || input.equalsIgnoreCase("ON") || input.equalsIgnoreCase("LED_ON")) {
       setLedState(true);
-    } else if (input == "0" || input == "OFF" || input == "LED_OFF") {
+    } else if (input == "0" || input.equalsIgnoreCase("OFF") || input.equalsIgnoreCase("LED_OFF")) {
       setLedState(false);
-    } else if (input == "TOGGLE" || input == "T" || input == "LED_TOGGLE") {
+    } else if (input.equalsIgnoreCase("TOGGLE") || input.equalsIgnoreCase("LED_TOGGLE")) {
       setLedState(!ledState);
-    } else if (input == "STATUS" || input == "S") {
-      reportStatus();
+    } else if (input.startsWith("ITEM:")) {
+      String data = input.substring(5);
+      int c1 = data.indexOf(',');
+      int c2 = data.indexOf(',', c1 + 1);
+      if (c1 &gt; 0) {
+        String cat = data.substring(0, c1);
+        String name = (c2 &gt; 0) ? data.substring(c1 + 1, c2) : data.substring(c1 + 1);
+        String qty = (c2 &gt; 0) ? data.substring(c2 + 1) : "1";
+        printItemToSerial(cat, name, qty);
+      }
     }
   }
 }
@@ -594,15 +723,7 @@ void loop() {
 void setLedState(bool state) {
   ledState = state;
   digitalWrite(LED_PIN, ledState ? HIGH : LOW);
-  reportStatus();
-}
-
-void reportStatus() {
-  if (ledState) {
-    Serial.println("STATUS:ON");
-  } else {
-    Serial.println("STATUS:OFF");
-  }
+  Serial.println(ledState ? "STATUS:ON" : "STATUS:OFF");
 }</code></pre>
             </div>
           </div>

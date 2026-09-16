@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arduino Uno AI Voice Assistant | Web Serial LED Control</title>
+  <meta name="description" content="AI Voice Assistant web app to control Arduino Uno built-in LED via Web Serial API and Web Speech API.">
+  <link rel="stylesheet" href="styles.css">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-background">
+    <div class="bg-glow blob-1"></div>
+    <div class="bg-glow blob-2"></div>
+    <div class="bg-glow blob-3"></div>
+  </div>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z" fill="none"/>
+            <circle cx="12" cy="12" r="4" fill="currentColor"/>
+            <path d="M12 6v2m0 8v2M6 12H8m8 0h2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div>
+          <h1>Arduino AI Voice Assistant</h1>
+          <p class="subtitle">Control Arduino Uno Built-in LED via Web Serial & Voice</p>
+        </div>
+      </div>
+
+      <!-- Quick Connection Bar -->
+      <div class="connection-bar">
+        <div class="baud-selector">
+          <label for="baudRate">Baud Rate:</label>
+          <select id="baudRate">
+            <option value="9600" selected>9600 Baud</option>
+            <option value="115200">115200 Baud</option>
+            <option value="57600">57600 Baud</option>
+            <option value="19200">19200 Baud</option>
+          </select>
+        </div>
+        <button id="connectBtn" class="btn btn-primary">
+          <span class="btn-icon">🔌</span>
+          <span class="btn-text">Connect Arduino</span>
+        </button>
+        <div id="serialStatusBadge" class="status-badge disconnected">
+          <span class="status-dot"></span>
+          <span class="status-text">Disconnected</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+      <button class="tab-btn active" data-tab="assistant">
+        <span>🎙️ AI Assistant & Controls</span>
+      </button>
+      <button class="tab-btn" data-tab="terminal">
+        <span>💻 Serial Monitor Terminal</span>
+      </button>
+      <button class="tab-btn" data-tab="guide">
+        <span>📖 Arduino Setup & Code</span>
+      </button>
+    </nav>
+
+    <!-- Main Content Grid -->
+    <main class="main-content">
+
+      <!-- TAB 1: AI Assistant & Controls -->
+      <section id="tab-assistant" class="tab-content active">
+        <div class="dashboard-grid">
+
+          <!-- Voice Control Card -->
+          <div class="card glass-card voice-card">
+            <div class="card-header">
+              <h2><span class="header-icon">🎙️</span> Voice Control</h2>
+              <div class="header-toggles">
+                <label class="toggle-switch" title="Listen continuously for 'Hey Sara'">
+                  <input type="checkbox" id="wakeWordToggle">
+                  <span class="slider"></span>
+                  <span class="toggle-label">Wake Word ("Hey Sara")</span>
+                </label>
+                <label class="toggle-switch" title="Toggle AI Spoken Feedback">
+                  <input type="checkbox" id="ttsToggle" checked>
+                  <span class="slider"></span>
+                  <span class="toggle-label">Voice Feedback</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="voice-center">
+              <!-- Wake Word Badge -->
+              <div id="wakeBadge" class="wake-badge">
+                <span class="wake-icon">✨</span>
+                <span id="wakeBadgeText" class="wake-text">Say "Hey Sara..."</span>
+              </div>
+
+              <button id="micBtn" class="mic-button" aria-label="Toggle Voice Control">
+                <div class="mic-pulse"></div>
+                <div class="mic-icon">
+                  <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                    <line x1="12" y1="19" x2="12" y2="22"/>
+                    <line x1="8" y1="22" x2="16" y2="22"/>
+                  </svg>
+                </div>
+              </button>
+
+              <div id="voiceStatus" class="voice-status">Tap microphone or enable "Hey Sara"...</div>
+
+              <!-- Sound Wave Visualization -->
+              <div id="visualizer" class="wave-visualizer">
+                <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                <div class="bar"></div><div class="bar"></div>
+              </div>
+            </div>
+
+            <!-- Speech Transcript Box -->
+            <div class="transcript-box">
+              <span class="transcript-label">Recognized Speech:</span>
+              <p id="speechTranscript" class="transcript-text">"Waiting for your command..."</p>
+            </div>
+
+            <!-- Preset Quick Voice Commands -->
+            <div class="quick-commands">
+              <span class="quick-title">Quick Try:</span>
+              <button class="chip-btn" onclick="triggerPresetCommand('Hey Sara turn on the LED')">"Hey Sara, turn on LED"</button>
+              <button class="chip-btn" onclick="triggerPresetCommand('Hey Sara turn off the LED')">"Hey Sara, turn off LED"</button>
+              <button class="chip-btn" onclick="triggerPresetCommand('Hey Sara toggle light')">"Hey Sara, toggle light"</button>
+              <button class="chip-btn" onclick="triggerPresetCommand('Hey Sara check status')">"Hey Sara, status"</button>
+            </div>
+          </div>
+
+          <!-- Arduino Visual Status Card -->
+          <div class="card glass-card hardware-card">
+            <div class="card-header">
+              <h2><span class="header-icon">⚡</span> Arduino Hardware View</h2>
+              <div id="ledStateTag" class="led-tag off">LED OFF</div>
+            </div>
+
+            <div class="hardware-visual">
+              <div class="arduino-board">
+                <div class="board-label">ARDUINO UNO</div>
+                
+                <!-- Pin 13 LED Simulation -->
+                <div class="led-container">
+                  <div class="pin-label">PIN 13 (Built-in LED)</div>
+                  <div id="visualLed" class="virtual-led off">
+                    <div class="led-glow"></div>
+                  </div>
+                  <span id="ledSubtext" class="led-subtext">Pin 13 state: LOW</span>
+                </div>
+
+                <div class="board-chip">
+                  <span>ATmega328P</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Manual Control Switches -->
+            <div class="manual-controls">
+              <h3>Manual Overrides</h3>
+              <div class="btn-group">
+                <button id="btnLedOn" class="btn btn-success">
+                  <span>💡 Turn ON</span>
+                </button>
+                <button id="btnLedOff" class="btn btn-danger">
+                  <span>🌙 Turn OFF</span>
+                </button>
+                <button id="btnLedToggle" class="btn btn-secondary">
+                  <span>🔄 Toggle</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Voice Command History & AI Logs -->
+        <div class="card glass-card history-card">
+          <div class="card-header">
+            <h2><span class="header-icon">📜</span> Command History & AI Responses</h2>
+            <button id="clearHistoryBtn" class="btn btn-sm btn-outline">Clear History</button>
+          </div>
+          <div id="commandHistoryList" class="history-list">
+            <div class="history-empty">No voice commands executed yet. Connect Arduino and speak!</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: Serial Monitor Terminal -->
+      <section id="tab-terminal" class="tab-content">
+        <div class="card glass-card terminal-card">
+          <div class="card-header">
+            <h2><span class="header-icon">🖥️</span> Live Serial Monitor</h2>
+            <div class="terminal-actions">
+              <label class="checkbox-label">
+                <input type="checkbox" id="autoscrollCheck" checked>
+                <span>Auto-scroll</span>
+              </label>
+              <button id="clearTerminalBtn" class="btn btn-sm btn-outline">Clear Terminal</button>
+            </div>
+          </div>
+
+          <!-- Terminal Output Screen -->
+          <div id="terminalScreen" class="terminal-screen">
+            <div class="term-line sys">[SYSTEM] Ready. Connect to Arduino Uno serial port to inspect live logs.</div>
+          </div>
+
+          <!-- Direct Command Input -->
+          <form id="serialForm" class="terminal-input-bar">
+            <input type="text" id="serialInput" placeholder="Type raw serial command (e.g. 1, 0, ON, OFF, STATUS) and press Enter..." autocomplete="off">
+            <button type="submit" class="btn btn-primary btn-send">Send to Serial</button>
+          </form>
+        </div>
+      </section>
+
+      <!-- TAB 3: Arduino Setup & Code Guide -->
+      <section id="tab-guide" class="tab-content">
+        <div class="guide-grid">
+
+          <div class="card glass-card guide-info-card">
+            <h2><span class="header-icon">🚀</span> Quick Setup Guide</h2>
+            <ol class="setup-steps">
+              <li>
+                <strong>Connect your Arduino Uno</strong> to your computer using a USB Type-B cable.
+              </li>
+              <li>
+                <strong>Copy the C++ Sketch</strong> shown on the right panel into the <em>Arduino IDE</em>.
+              </li>
+              <li>
+                In Arduino IDE, select <strong>Tools &gt; Board &gt; Arduino Uno</strong> and choose your COM port under <strong>Tools &gt; Port</strong>.
+              </li>
+              <li>
+                Click <strong>Upload</strong> (Ctrl+U) to load the code onto your Arduino Uno.
+              </li>
+              <li>
+                Close the Arduino IDE Serial Monitor (to free the COM port), return to this Web Assistant, and click <strong>🔌 Connect Arduino</strong> in the top header bar!
+              </li>
+            </ol>
+            
+            <div class="info-alert">
+              <strong>💡 Tip:</strong> Browser Web Serial API requires Google Chrome, Microsoft Edge, or Opera. If you are on an unsupported browser, you can use our included <code>serial_bridge.py</code> Python fallback script.
+            </div>
+          </div>
+
+          <!-- Code Display Card -->
+          <div class="card glass-card code-card">
+            <div class="card-header">
+              <h2><span class="header-icon">📄</span> arduino_led_control.ino</h2>
+              <button id="copyCodeBtn" class="btn btn-sm btn-primary">📋 Copy Code</button>
+            </div>
+            <pre class="code-block"><code id="inoCodeBlock">/*
+  Arduino Uno AI Voice Assistant - LED Control Sketch
+*/
+const int LED_PIN = LED_BUILTIN; // Pin 13 on Arduino Uno
+bool ledState = false;
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, LOW);
+
+  // Ready banner
+  Serial.println("ARDUINO UNO VOICE CONTROL READY");
+  Serial.println("STATUS:OFF");
+}
+
+void loop() {
+  if (Serial.available() > 0) {
+    String input = Serial.readStringUntil('\n');
+    input.trim();
+    input.toUpperCase();
+
+    if (input == "1" || input == "ON" || input == "LED_ON") {
+      setLedState(true);
+    } else if (input == "0" || input == "OFF" || input == "LED_OFF") {
+      setLedState(false);
+    } else if (input == "TOGGLE" || input == "T") {
+      setLedState(!ledState);
+    } else if (input == "STATUS" || input == "S") {
+      reportStatus();
+    }
+  }
+}
+
+void setLedState(bool state) {
+  ledState = state;
+  digitalWrite(LED_PIN, ledState ? HIGH : LOW);
+  reportStatus();
+}
+
+void reportStatus() {
+  if (ledState) {
+    Serial.println("STATUS:ON");
+    Serial.println("ACK: LED turned ON");
+  } else {
+    Serial.println("STATUS:OFF");
+    Serial.println("ACK: LED turned OFF");
+  }
+}</code></pre>
+          </div>
+
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>Arduino Uno AI Voice Assistant &bull; Built with Web Serial API &amp; Web Speech Recognition</p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
